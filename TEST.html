@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Voice Converter Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .pending { background: #fff3cd; color: #856404; }
+        button {
+              background: #1d4ed8;
+              color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Voice Converter - System Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Backend Health Check</h2>
+        <button onclick="testBackend()">Test Backend</button>
+        <div id="backend-status" class="status pending">Not tested yet...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Frontend Access</h2>
+        <button onclick="testFrontend()">Test Frontend</button>
+        <div id="frontend-status" class="status pending">Not tested yet...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Browser Permissions</h2>
+        <button onclick="testPermissions()">Test Screen Capture</button>
+        <div id="permissions-status" class="status pending">Not tested yet...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Full Integration Test</h2>
+        <p>Speak into your microphone or play audio</p>
+        <button onclick="startTest()">Start Live Test</button>
+        <button onclick="stopTest()">Stop Test</button>
+        <div id="test-status" class="status pending">Not started...</div>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Quick Links</h2>
+        <a href="http://localhost:3000" target="_blank">
+            <button>Open Main App</button>
+        </a>
+        <a href="http://localhost:8000/health" target="_blank">
+            <button>Backend Health</button>
+        </a>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let sessionId;
+
+        async function testBackend() {
+            const statusEl = document.getElementById('backend-status');
+            statusEl.textContent = 'Testing...';
+            statusEl.className = 'status pending';
+            
+            try {
+                const res = await fetch('http://localhost:8000/health');
+                const data = await res.json();
+                
+                if (data.status === 'ok') {
+                    statusEl.textContent = '✓ Backend is running correctly!';
+                    statusEl.className = 'status success';
+                } else {
+                    statusEl.textContent = '✗ Backend returned unexpected response: ' + JSON.stringify(data);
+                    statusEl.className = 'status error';
+                }
+            } catch (err) {
+                statusEl.textContent = '✗ Backend not accessible: ' + err.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        async function testFrontend() {
+            const statusEl = document.getElementById('frontend-status');
+            statusEl.textContent = 'Testing...';
+            statusEl.className = 'status pending';
+            
+            try {
+                const res = await fetch('http://localhost:3000');
+                
+                if (res.ok) {
+                    statusEl.textContent = '✓ Frontend is running correctly!';
+                    statusEl.className = 'status success';
+                } else {
+                    statusEl.textContent = '✗ Frontend returned status: ' + res.status;
+                    statusEl.className = 'status error';
+                }
+            } catch (err) {
+                statusEl.textContent = '✗ Frontend not accessible: ' + err.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        async function testPermissions() {
+            const statusEl = document.getElementById('permissions-status');
+            statusEl.textContent = 'Requesting permissions...';
+            statusEl.className = 'status pending';
+            
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+                
+                const hasAudio = stream.getAudioTracks().length > 0;
+                for (const track of stream.getTracks()) { track.stop(); }
+                    for (const track of stream.getTracks()) { track.stop(); }
+                
+                if (hasAudio) {
+                    statusEl.textContent = '✓ Screen capture with audio is working!';
+                    statusEl.className = 'status success';
+                } else {
+                    statusEl.textContent = '⚠ Screen capture works but no audio track. Make sure to check "Share tab audio"!';
+                    statusEl.className = 'status pending';
+                }
+            } catch (err) {
+                statusEl.textContent = '✗ Permission denied or not supported: ' + err.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        async function startTest() {
+            const statusEl = document.getElementById('test-status');
+            const resultsEl = document.getElementById('test-results');
+            
+            try {
+                statusEl.textContent = 'Requesting screen capture...';
+                statusEl.className = 'status pending';
+                
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+                
+                sessionId = crypto.randomUUID();
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm; codecs=opus' });
+                
+                resultsEl.innerHTML = '<h3>Results:</h3>';
+                
+                mediaRecorder.ondataavailable = async (e) => {
+                    if (!e.data || e.data.size === 0) return;
+                    
+                    const form = new FormData();
+                    form.append('file', e.data, 'chunk.webm');
+                    
+                    try {
+                        const res = await fetch(`http://localhost:8000/ingest?session=${sessionId}&target=es`, {
+                            method: 'POST',
+                            body: form
+                        });
+                        
+                        if (res.ok) {
+                            const data = await res.json();
+                            resultsEl.innerHTML += `
+                                <div style="margin: 10px 0; padding: 10px; background: #e7f3ff; border-radius: 4px;">
+                                    <strong>Live Text:</strong> ${data.liveText || 'N/A'}<br>
+                                    <strong>Segments:</strong> ${data.newSegments?.length || 0}<br>
+                                    <strong>TTS URLs:</strong> ${data.ttsUrls?.length || 0}
+                                </div>
+                            `;
+                            statusEl.textContent = '✓ Test is running! Speak or play audio...';
+                            statusEl.className = 'status success';
+                        } else {
+                            const errorText = await res.text();
+                            resultsEl.innerHTML += `<pre style="color: red;">Error: ${errorText}</pre>`;
+                        }
+                    } catch (err) {
+                        resultsEl.innerHTML += `<pre style="color: red;">Network error: ${err.message}</pre>`;
+                    }
+                };
+                
+                mediaRecorder.start(2000); // 2s chunks for testing
+                statusEl.textContent = '🎙️ Recording... Speak or play audio!';
+                statusEl.className = 'status success';
+                
+            } catch (err) {
+                statusEl.textContent = '✗ Test failed: ' + err.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        function stopTest() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                for (const track of mediaRecorder.stream.getTracks()) { track.stop(); }
+                
+                const statusEl = document.getElementById('test-status');
+                statusEl.textContent = '⏹️ Test stopped';
+                statusEl.className = 'status pending';
+            }
+        }
+
+        // Auto-run basic tests on load
+        window.onload = () => {
+            testBackend();
+            testFrontend();
+        };
+    </script>
+</body>
+</html>

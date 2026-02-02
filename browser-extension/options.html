@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Live Captions Settings</title>
+<style>
+ body { font-family: system-ui, sans-serif; margin: 1.25rem; }
+ label { display:block; margin-top:0.75rem; font-weight:600; }
+ input[type=text]{ width: 260px; padding:0.4rem; }
+ button{ margin-top:1rem; padding:0.5rem 1rem; }
+ .status{ margin-top:1rem; font-size:0.85rem; opacity:0.7; }
+</style>
+</head>
+<body>
+  <h1>Live Captions</h1>
+  <p>Enter the Session ID that the backend assigned (the app uses a random UUID each capture start). Start a new capture, note the session id (you can expose it in UI), then set it here.</p>
+  <label>Session ID <input type="text" id="session" placeholder="paste session id" /></label>
+  <button id="save">Connect</button>
+  <div class="status" id="status">Idle</div>
+  <script src="options.js"></script>
+</body>
+</html>

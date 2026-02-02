@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Voice Converter - Floating Captions</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: rgba(0, 0, 0, 0.95);
+      color: white;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    #caption {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 1.4;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      max-width: 100%;
+      word-wrap: break-word;
+    }
+    .listening {
+      color: #888;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div id="caption" class="listening">🎤 Listening...</div>
+  <script>
+    // Listen for caption updates from parent window
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'caption') {
+        const el = document.getElementById('caption');
+        if (event.data.text) {
+          el.textContent = event.data.text;
+          el.classList.remove('listening');
+        } else {
+          el.textContent = '🎤 Listening...';
+          el.classList.add('listening');
+        }
+      }
+    });
+    
+    // Also try to get from opener if available
+    if (window.opener) {
+      setInterval(() => {
+        try {
+          const text = window.opener.voiceConverterCaption;
+          if (text !== undefined) {
+            const el = document.getElementById('caption');
+            if (text) {
+              el.textContent = text;
+              el.classList.remove('listening');
+            }
+          }
+        } catch (e) {}
+      }, 100);
+    }
+  </script>
+</body>
+</html>

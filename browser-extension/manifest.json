@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Live Captions Overlay",
+  "version": "0.1.0",
+  "description": "Shows live translated captions on any tab via WebSocket subscription.",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "ws://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
